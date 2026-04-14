@@ -1,4 +1,3 @@
-import FormData from 'form-data';
 import {
   type IAllExecuteFunctions,
   type IDataObject,
@@ -15,7 +14,7 @@ export type HttpResponse<D> = Omit<IN8nHttpFullResponse, 'body'> & {
 
 export type SendRequestOptions = Omit<IHttpRequestOptions, 'url'> & {
   url?: string;
-  body?: IDataObject | FormData | Buffer;
+  body?: IDataObject | Buffer;
   json?: boolean;
 };
 
