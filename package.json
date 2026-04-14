@@ -1,6 +1,6 @@
 {
   "name": "@devantage/n8n-nodes-microsoft-sharepoint",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "n8n community nodes for Microsoft SharePoint API",
   "contributors": [
     "Guilherme Nogueira <guilherme.nogueira@devantage.com.br>"

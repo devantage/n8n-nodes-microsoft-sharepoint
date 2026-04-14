@@ -52,3 +52,4 @@ Instructions will be written as soon as possible.
 ## Version history
 
 - 1.0.0 - First release
+- 1.0.0 - Fix credentials declaration
