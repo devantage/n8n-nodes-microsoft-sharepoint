@@ -1,6 +1,6 @@
 import { IAllExecuteFunctions, IDataObject } from 'n8n-workflow';
 
-import { sendRequest, SendRequestOptions } from '../../../utils';
+import { normalizePath, sendRequest, SendRequestOptions } from '../../../utils';
 import { getItemIdByPath } from '../../shared';
 import { Folder } from '../models';
 
@@ -11,7 +11,7 @@ export async function createFolder(
   createIntermediateFolders: boolean = false,
   overwrite: boolean = false,
 ): Promise<Folder> {
-  const pathParts: string[] = path
+  const pathParts: string[] = normalizePath(path)
     .split('/')
     .filter((curPath: string) => curPath);
 

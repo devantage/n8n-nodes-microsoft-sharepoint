@@ -1,6 +1,11 @@
 import { IAllExecuteFunctions } from 'n8n-workflow';
 
-import { HttpResponse, sendRequest, SendRequestOptions } from '../../utils';
+import {
+  HttpResponse,
+  normalizePath,
+  sendRequest,
+  SendRequestOptions,
+} from '../../utils';
 
 export type Item = {
   id: string;
@@ -15,7 +20,7 @@ export async function getItemIdByPath(
     IAllExecuteFunctions,
     [string, SendRequestOptions],
     Promise<HttpResponse<Item>>
-  >(this, `sites/${siteId}/drive/root:${path}`, {
+  >(this, `sites/${siteId}/drive/root:${normalizePath(path)}`, {
     returnFullResponse: true,
     ignoreHttpStatusErrors: true,
   });
