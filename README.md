@@ -52,4 +52,5 @@ Instructions will be written as soon as possible.
 ## Version history
 
 - 1.0.0 - First release
-- 1.0.0 - Fix credentials declaration
+- 1.0.1 - Fix credentials declaration
+- 1.1.0 - Implements automatically path normalization (If provided path doesn't start with '/', it will be automatically prepended)
