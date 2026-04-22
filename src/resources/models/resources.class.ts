@@ -1,10 +1,10 @@
-import { INodeProperties } from 'n8n-workflow';
+import { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
 
 import { INodeMethods } from '../../interfaces/node-methods.interface';
 import { FileResource } from '../file';
 import { FolderResource } from '../folder';
 import { SiteResource } from '../site';
-import { Resource } from '.';
+import { Resource } from './resource.class';
 
 export class Resources {
   private static readonly _resources: Resource[] = [
@@ -12,6 +12,33 @@ export class Resources {
     new FolderResource(),
     new FileResource(),
   ];
+
+  private static readonly _methodCategories: Array<keyof INodeMethods> = [
+    'loadOptions',
+    'listSearch',
+    'credentialTest',
+    'resourceMapping',
+    'localResourceMapping',
+    'actionHandler',
+  ];
+
+  private static _mergeCategory(
+    methods: INodeMethods,
+    curResourceMethods: INodeMethods,
+    category: keyof INodeMethods,
+  ): void {
+    const categoryMethods: INodeMethods[keyof INodeMethods] | undefined =
+      curResourceMethods[category];
+
+    if (!categoryMethods) {
+      return;
+    }
+
+    methods[category] = {
+      ...(methods[category] ?? {}),
+      ...categoryMethods,
+    } as never;
+  }
 
   public static getProperties(): INodeProperties[] {
     const properties: INodeProperties[] = [
@@ -26,12 +53,11 @@ export class Resources {
       },
     ];
 
-    for (const curResource of Resources._resources) {
-      if (properties[0].options === undefined) {
-        throw new Error(``);
-      }
+    const resourceOptions: INodePropertyOptions[] = properties[0]
+      .options as INodePropertyOptions[];
 
-      properties[0].options.push(curResource.getResourcePropertyOption());
+    for (const curResource of Resources._resources) {
+      resourceOptions.push(curResource.getResourcePropertyOption());
 
       properties.push(curResource.getOperationProperty());
 
@@ -42,93 +68,18 @@ export class Resources {
   }
 
   public static getMethods(): INodeMethods | undefined {
-    let methods: INodeMethods = {};
+    const methods: INodeMethods = {};
 
     for (const curResource of Resources._resources) {
       const curResourceMethods: INodeMethods | undefined =
         curResource.getMethods();
 
-      if (curResourceMethods) {
-        if (methods.loadOptions && curResourceMethods.loadOptions) {
-          methods = {
-            loadOptions: {
-              ...methods.loadOptions,
-              ...curResourceMethods.loadOptions,
-            },
-          };
-        } else if (curResourceMethods.loadOptions) {
-          methods = {
-            loadOptions: curResourceMethods.loadOptions,
-          };
-        }
+      if (!curResourceMethods) {
+        continue;
+      }
 
-        if (methods.listSearch && curResourceMethods.listSearch) {
-          methods = {
-            listSearch: {
-              ...methods.listSearch,
-              ...curResourceMethods.listSearch,
-            },
-          };
-        } else if (curResourceMethods.listSearch) {
-          methods = {
-            listSearch: curResourceMethods.listSearch,
-          };
-        }
-
-        if (methods.credentialTest && curResourceMethods.credentialTest) {
-          methods = {
-            credentialTest: {
-              ...methods.credentialTest,
-              ...curResourceMethods.credentialTest,
-            },
-          };
-        } else if (curResourceMethods.credentialTest) {
-          methods = {
-            credentialTest: curResourceMethods.credentialTest,
-          };
-        }
-
-        if (methods.resourceMapping && curResourceMethods.resourceMapping) {
-          methods = {
-            resourceMapping: {
-              ...methods.resourceMapping,
-              ...curResourceMethods.resourceMapping,
-            },
-          };
-        } else if (curResourceMethods.resourceMapping) {
-          methods = {
-            resourceMapping: curResourceMethods.resourceMapping,
-          };
-        }
-
-        if (
-          methods.localResourceMapping &&
-          curResourceMethods.localResourceMapping
-        ) {
-          methods = {
-            localResourceMapping: {
-              ...methods.localResourceMapping,
-              ...curResourceMethods.localResourceMapping,
-            },
-          };
-        } else if (curResourceMethods.localResourceMapping) {
-          methods = {
-            localResourceMapping: curResourceMethods.localResourceMapping,
-          };
-        }
-
-        if (methods.actionHandler && curResourceMethods.actionHandler) {
-          methods = {
-            actionHandler: {
-              ...methods.actionHandler,
-              ...curResourceMethods.actionHandler,
-            },
-          };
-        } else if (curResourceMethods.actionHandler) {
-          methods = {
-            actionHandler: curResourceMethods.actionHandler,
-          };
-        }
+      for (const category of Resources._methodCategories) {
+        Resources._mergeCategory(methods, curResourceMethods, category);
       }
     }
 

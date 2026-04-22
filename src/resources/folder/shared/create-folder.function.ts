@@ -11,12 +11,12 @@ export async function createFolder(
   createIntermediateFolders: boolean = false,
   overwrite: boolean = false,
 ): Promise<Folder> {
-  const pathParts: string[] = normalizePath(path)
+  const pathParts: string[] = path
     .split('/')
     .filter((curPath: string) => curPath);
 
   const name: string | undefined = pathParts.pop();
-  const parentPath: string = `/${pathParts.join('/')}`;
+  const parentPath: string = normalizePath(pathParts.join('/'));
 
   let parentId: string | undefined =
     parentPath !== '/'
@@ -25,9 +25,9 @@ export async function createFolder(
 
   if (pathParts.length && !parentId && createIntermediateFolders) {
     for (const curParentIndex of pathParts.keys()) {
-      const curParentPath: string = `/${pathParts
+      const curParentPath: string = pathParts
         .slice(0, curParentIndex + 1)
-        .join('/')}`;
+        .join('/');
 
       const curParentId: string | undefined = await getItemIdByPath.call(
         this,

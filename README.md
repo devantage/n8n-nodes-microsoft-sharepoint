@@ -48,9 +48,3 @@ Instructions will be written as soon as possible.
 
 - [n8n community nodes documentation](https://docs.n8n.io/integrations/#community-nodes)
 - [Microsoft SharePoint API documentation](https://learn.microsoft.com/en-us/graph/api/resources/sharepoint?view=graph-rest-1.0)
-
-## Version history
-
-- 1.0.0 - First release
-- 1.0.1 - Fix credentials declaration
-- 1.1.0 - Implements automatically path normalization (If provided path doesn't start with '/', it will be automatically prepended)

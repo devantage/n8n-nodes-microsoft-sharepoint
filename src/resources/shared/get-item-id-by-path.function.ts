@@ -1,6 +1,7 @@
 import { IAllExecuteFunctions } from 'n8n-workflow';
 
 import {
+  getErrorMessage,
   HttpResponse,
   normalizePath,
   sendRequest,
@@ -16,18 +17,23 @@ export async function getItemIdByPath(
   siteId: string,
   path: string,
 ): Promise<string | undefined> {
-  const response: HttpResponse<Item> = await sendRequest.call<
-    IAllExecuteFunctions,
-    [string, SendRequestOptions],
-    Promise<HttpResponse<Item>>
-  >(this, `sites/${siteId}/drive/root:${normalizePath(path)}`, {
-    returnFullResponse: true,
-    ignoreHttpStatusErrors: true,
-  });
+  try {
+    const response: HttpResponse<Item> = await sendRequest.call<
+      IAllExecuteFunctions,
+      [string, SendRequestOptions],
+      Promise<HttpResponse<Item>>
+    >(this, `sites/${siteId}/drive/root:${normalizePath(path)}`, {
+      returnFullResponse: true,
+    });
 
-  if (response.statusCode >= 400) {
-    return undefined;
+    return response.body.id;
+  } catch (error: unknown) {
+    const errorMessage: string = getErrorMessage(error);
+
+    if (errorMessage.includes('404')) {
+      return undefined;
+    }
+
+    throw error;
   }
-
-  return response.body.id;
 }

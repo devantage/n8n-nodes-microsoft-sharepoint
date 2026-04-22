@@ -37,8 +37,35 @@ export async function sendRequest<D>(
         Promise<HttpResponse<D>>
       >(this, credentialsType, {
         ...options,
+        ignoreHttpStatusErrors: true,
         returnFullResponse: true,
       } as IHttpRequestOptions);
+
+    if (response.statusCode === 429 && response.headers['Retry-After']) {
+      const retryAfterInSeconds: number =
+        parseInt(response.headers['Retry-After'] as string, 10) || 10;
+
+      this.logger.warn(
+        `Requests throttled. Waiting ${retryAfterInSeconds.toString()} seconds to make next request`,
+      );
+
+      await new Promise((resolve: (value: unknown) => void) =>
+        setTimeout(resolve, retryAfterInSeconds * 1000),
+      );
+
+      return await sendRequest.call<
+        IAllExecuteFunctions,
+        [string, SendRequestOptions],
+        Promise<D>
+      >(this, resource, options);
+    } else if (response.statusCode >= 400) {
+      throw new NodeOperationError(
+        this.getNode(),
+        new Error(
+          `HTTP Error ${response.statusCode.toString()} - ${getErrorMessage(response.statusMessage)}${response.body ? `. Details: ${getErrorMessage(response.body)}` : ''}`,
+        ),
+      );
+    }
 
     if (options.returnFullResponse) {
       return response as D;
