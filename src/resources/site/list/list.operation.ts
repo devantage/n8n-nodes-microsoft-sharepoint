@@ -5,7 +5,7 @@ import type {
   INodeProperties,
 } from 'n8n-workflow';
 
-import { ResourceOperation } from '../../models';
+import { ResourceOperation } from '../../models/resource-operation.class';
 import { ListSitesResponse } from '../models/list-sites-response';
 import { listSites } from '../shared';
 
