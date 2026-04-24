@@ -66,7 +66,7 @@ describe('sendRequest', (): void => {
 
     expect(result).toEqual({ id: '123' });
     expect(context.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
-      'microsoftSharePointOAuth2Api',
+      'microsoftSharePointOAuth2',
       expect.objectContaining({
         method: 'GET',
         returnFullResponse: true,
@@ -116,7 +116,7 @@ describe('sendRequest', (): void => {
     });
 
     expect(context.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
-      'microsoftSharePointOAuth2Api',
+      'microsoftSharePointOAuth2',
       expect.objectContaining({
         url: 'https://download.example.com/file.txt',
       }),
@@ -140,7 +140,7 @@ describe('sendRequest', (): void => {
     });
 
     expect(context.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
-      'microsoftSharePointOAuth2Api',
+      'microsoftSharePointOAuth2',
       expect.objectContaining({
         url: 'https://graph.microsoft.com/v1.0/sites/site-id',
       }),
@@ -161,7 +161,7 @@ describe('sendRequest', (): void => {
     await sendRequest.call(context as never, 'sites/site-id');
 
     expect(context.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
-      'microsoftSharePointOAuth2Api',
+      'microsoftSharePointOAuth2',
       expect.objectContaining({
         url: 'https://graph.microsoft.com/v1.0/sites/site-id',
       }),
@@ -250,7 +250,7 @@ describe('sendRequest', (): void => {
       context.helpers.httpRequestWithAuthentication,
     ).toHaveBeenNthCalledWith(
       1,
-      'microsoftSharePointOAuth2Api',
+      'microsoftSharePointOAuth2',
       expect.objectContaining({
         body,
         method: 'PUT',
@@ -261,7 +261,7 @@ describe('sendRequest', (): void => {
       context.helpers.httpRequestWithAuthentication,
     ).toHaveBeenNthCalledWith(
       2,
-      'microsoftSharePointOAuth2Api',
+      'microsoftSharePointOAuth2',
       expect.objectContaining({
         body,
         method: 'PUT',
