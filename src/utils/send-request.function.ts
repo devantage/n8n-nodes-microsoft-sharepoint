@@ -28,7 +28,7 @@ export async function sendRequest<D>(
       options.url = `https://graph.microsoft.com/v1.0/${resource}`;
     }
 
-    const credentialsType: string = 'microsoftSharePointOAuth2Api';
+    const credentialsType: string = 'microsoftSharePointOAuth2';
 
     const response: HttpResponse<D> =
       await this.helpers.httpRequestWithAuthentication.call<
