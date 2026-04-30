@@ -25,7 +25,7 @@ import { createFolder } from './create-folder.function';
 
 describe('createFolder', (): void => {
   afterEach((): void => {
-    jest.restoreAllMocks();
+    jest.resetAllMocks();
   });
 
   it('creates intermediate folders recursively when requested', async (): Promise<void> => {
@@ -151,6 +151,95 @@ describe('createFolder', (): void => {
     );
   });
 
+  it('creates a deep nested path when no intermediate folder exists', async (): Promise<void> => {
+    jest
+      .spyOn(sharedModule, 'getItemIdByPath')
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined);
+    jest
+      .spyOn(utilsModule, 'sendRequest')
+      .mockResolvedValueOnce({ id: 'A-id', name: 'A' })
+      .mockResolvedValueOnce({ id: 'B-id', name: 'B' })
+      .mockResolvedValueOnce({ id: 'C-id', name: 'C' })
+      .mockResolvedValueOnce({ id: 'D-id', name: 'D' })
+      .mockResolvedValueOnce({ id: 'Target-id', name: 'Target' });
+
+    const result: Folder = await createFolder.call(
+      {} as never,
+      'site-id',
+      '/A/B/C/D/Target',
+      true,
+      false,
+    );
+
+    expect(result).toEqual({ id: 'Target-id', name: 'Target' });
+    expect(sharedModule.getItemIdByPath).toHaveBeenCalledTimes(5);
+    expect(utilsModule.sendRequest).toHaveBeenCalledTimes(5);
+    expect(utilsModule.sendRequest).toHaveBeenNthCalledWith(
+      1,
+      'sites/site-id/drive/root/children',
+      {
+        body: {
+          '@microsoft.graph.conflictBehavior': 'fail',
+          folder: {},
+          name: 'A',
+        },
+        method: 'POST',
+      },
+    );
+    expect(utilsModule.sendRequest).toHaveBeenNthCalledWith(
+      2,
+      'sites/site-id/drive/items/A-id/children',
+      {
+        body: {
+          '@microsoft.graph.conflictBehavior': 'fail',
+          folder: {},
+          name: 'B',
+        },
+        method: 'POST',
+      },
+    );
+    expect(utilsModule.sendRequest).toHaveBeenNthCalledWith(
+      3,
+      'sites/site-id/drive/items/B-id/children',
+      {
+        body: {
+          '@microsoft.graph.conflictBehavior': 'fail',
+          folder: {},
+          name: 'C',
+        },
+        method: 'POST',
+      },
+    );
+    expect(utilsModule.sendRequest).toHaveBeenNthCalledWith(
+      4,
+      'sites/site-id/drive/items/C-id/children',
+      {
+        body: {
+          '@microsoft.graph.conflictBehavior': 'fail',
+          folder: {},
+          name: 'D',
+        },
+        method: 'POST',
+      },
+    );
+    expect(utilsModule.sendRequest).toHaveBeenNthCalledWith(
+      5,
+      'sites/site-id/drive/items/D-id/children',
+      {
+        body: {
+          '@microsoft.graph.conflictBehavior': 'fail',
+          folder: {},
+          name: 'Target',
+        },
+        method: 'POST',
+      },
+    );
+  });
+
   it('continues past existing intermediate folders before creating missing ones', async (): Promise<void> => {
     jest
       .spyOn(sharedModule, 'getItemIdByPath')
@@ -190,6 +279,141 @@ describe('createFolder', (): void => {
           '@microsoft.graph.conflictBehavior': 'fail',
           folder: {},
           name: 'Invoices',
+        },
+        method: 'POST',
+      },
+    );
+  });
+
+  it('skips intermediate folder creation when the full parent path already exists', async (): Promise<void> => {
+    jest
+      .spyOn(sharedModule, 'getItemIdByPath')
+      .mockResolvedValueOnce('finance-id');
+    jest.spyOn(utilsModule, 'sendRequest').mockResolvedValueOnce({
+      id: 'invoices-id',
+      name: 'Invoices',
+    });
+
+    const result: Folder = await createFolder.call(
+      {} as never,
+      'site-id',
+      '/Finance/Invoices',
+      true,
+      false,
+    );
+
+    expect(result).toEqual({
+      id: 'invoices-id',
+      name: 'Invoices',
+    });
+    expect(sharedModule.getItemIdByPath).toHaveBeenCalledTimes(1);
+    expect(sharedModule.getItemIdByPath).toHaveBeenCalledWith(
+      'site-id',
+      '/Finance',
+    );
+    expect(utilsModule.sendRequest).toHaveBeenCalledTimes(1);
+    expect(utilsModule.sendRequest).toHaveBeenCalledWith(
+      'sites/site-id/drive/items/finance-id/children',
+      {
+        body: {
+          '@microsoft.graph.conflictBehavior': 'fail',
+          folder: {},
+          name: 'Invoices',
+        },
+        method: 'POST',
+      },
+    );
+  });
+
+  it('does not create intermediate folders when createIntermediateFolders is false', async (): Promise<void> => {
+    jest
+      .spyOn(sharedModule, 'getItemIdByPath')
+      .mockResolvedValueOnce(undefined);
+    jest.spyOn(utilsModule, 'sendRequest').mockResolvedValueOnce({
+      id: 'invoices-id',
+      name: 'Invoices',
+    });
+
+    const result: Folder = await createFolder.call(
+      {} as never,
+      'site-id',
+      '/Finance/Invoices',
+      false,
+      false,
+    );
+
+    expect(result).toEqual({
+      id: 'invoices-id',
+      name: 'Invoices',
+    });
+    expect(sharedModule.getItemIdByPath).toHaveBeenCalledTimes(1);
+    expect(utilsModule.sendRequest).toHaveBeenCalledTimes(1);
+    expect(utilsModule.sendRequest).toHaveBeenCalledWith(
+      'sites/site-id/drive/root/children',
+      {
+        body: {
+          '@microsoft.graph.conflictBehavior': 'fail',
+          folder: {},
+          name: 'Invoices',
+        },
+        method: 'POST',
+      },
+    );
+  });
+
+  it('uses replace conflict behavior for intermediate folders when overwrite is true', async (): Promise<void> => {
+    jest
+      .spyOn(sharedModule, 'getItemIdByPath')
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined);
+    jest
+      .spyOn(utilsModule, 'sendRequest')
+      .mockResolvedValueOnce({ id: 'A-id', name: 'A' })
+      .mockResolvedValueOnce({ id: 'B-id', name: 'B' })
+      .mockResolvedValueOnce({ id: 'Target-id', name: 'Target' });
+
+    const result: Folder = await createFolder.call(
+      {} as never,
+      'site-id',
+      '/A/B/Target',
+      true,
+      true,
+    );
+
+    expect(result).toEqual({ id: 'Target-id', name: 'Target' });
+    expect(utilsModule.sendRequest).toHaveBeenNthCalledWith(
+      1,
+      'sites/site-id/drive/root/children',
+      {
+        body: {
+          '@microsoft.graph.conflictBehavior': 'replace',
+          folder: {},
+          name: 'A',
+        },
+        method: 'POST',
+      },
+    );
+    expect(utilsModule.sendRequest).toHaveBeenNthCalledWith(
+      2,
+      'sites/site-id/drive/items/A-id/children',
+      {
+        body: {
+          '@microsoft.graph.conflictBehavior': 'replace',
+          folder: {},
+          name: 'B',
+        },
+        method: 'POST',
+      },
+    );
+    expect(utilsModule.sendRequest).toHaveBeenNthCalledWith(
+      3,
+      'sites/site-id/drive/items/B-id/children',
+      {
+        body: {
+          '@microsoft.graph.conflictBehavior': 'replace',
+          folder: {},
+          name: 'Target',
         },
         method: 'POST',
       },

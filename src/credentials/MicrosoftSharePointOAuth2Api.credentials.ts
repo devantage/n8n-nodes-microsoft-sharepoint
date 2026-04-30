@@ -1,11 +1,11 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
-export class MicrosoftSharePointOAuth2 implements ICredentialType {
-  public name: string = 'microsoftSharePointOAuth2';
+export class MicrosoftSharePointOAuth2Api implements ICredentialType {
+  public name: string = 'microsoftSharePointOAuth2Api';
 
   public extends: string[] = ['microsoftOAuth2Api'];
 
-  public displayName: string = 'Microsoft SharePoint OAuth2';
+  public displayName: string = 'Microsoft SharePoint OAuth2 API';
 
   public documentationUrl: string =
     'https://learn.microsoft.com/en-us/graph/auth/auth-concepts';
@@ -15,7 +15,7 @@ export class MicrosoftSharePointOAuth2 implements ICredentialType {
       displayName: 'Scope',
       name: 'scope',
       type: 'hidden',
-      default: 'openid offline_access Sites.ReadWrite.All',
+      default: 'openid offline_access User.Read Sites.ReadWrite.All',
     },
   ];
 }

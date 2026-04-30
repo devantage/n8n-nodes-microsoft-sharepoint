@@ -1,7 +1,6 @@
-import { IAllExecuteFunctions } from 'n8n-workflow';
+import { IAllExecuteFunctions, NodeApiError } from 'n8n-workflow';
 
 import {
-  getErrorMessage,
   HttpResponse,
   normalizePath,
   sendRequest,
@@ -28,9 +27,9 @@ export async function getItemIdByPath(
 
     return response.body.id;
   } catch (error: unknown) {
-    const errorMessage: string = getErrorMessage(error);
+    const typedError: NodeApiError = error as NodeApiError;
 
-    if (errorMessage.includes('404')) {
+    if (typedError.httpCode == '404') {
       return undefined;
     }
 
