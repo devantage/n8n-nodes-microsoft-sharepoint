@@ -28,7 +28,7 @@
   "n8n": {
     "n8nNodesApiVersion": 1,
     "credentials": [
-      "dist/credentials/MicrosoftSharePointOAuth2.credentials.js"
+      "dist/credentials/MicrosoftSharePointOAuth2Api.credentials.js"
     ],
     "nodes": [
       "dist/nodes/MicrosoftSharePoint.node.js"

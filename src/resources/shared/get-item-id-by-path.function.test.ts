@@ -8,6 +8,8 @@ jest.mock('../../utils', () => {
   };
 });
 
+import { INode, NodeApiError } from 'n8n-workflow';
+
 import * as utilsModule from '../../utils';
 import { getItemIdByPath, type Item } from './get-item-id-by-path.function';
 
@@ -41,7 +43,9 @@ describe('getItemIdByPath', (): void => {
   it('returns undefined when sendRequest throws a 404 error', async (): Promise<void> => {
     jest
       .spyOn(utilsModule, 'sendRequest')
-      .mockRejectedValueOnce(new Error('HTTP Error 404 - Not Found'));
+      .mockRejectedValueOnce(
+        new NodeApiError({} as INode, {}, { httpCode: '404' }),
+      );
 
     await expect(
       getItemIdByPath.call({} as never, 'site-id', '/documents/report.txt'),

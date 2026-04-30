@@ -26,7 +26,7 @@ export class MicrosoftSharePoint implements INodeType {
     outputs: [NodeConnectionTypes.Main],
     credentials: [
       {
-        name: 'microsoftSharePointOAuth2',
+        name: 'microsoftSharePointOAuth2Api',
         required: true,
       },
     ],

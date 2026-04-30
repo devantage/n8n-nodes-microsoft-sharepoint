@@ -7,7 +7,7 @@
       "request": "launch",
       "cwd": "${workspaceFolder}",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["n8n@1.123.29", "start"],
+      "runtimeArgs": ["n8n@1.123.36", "start"],
       "console": "integratedTerminal",
       "autoAttachChildProcesses": true,
       "skipFiles": ["<node_internals>/**"],
