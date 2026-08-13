@@ -1,10 +1,3 @@
-jest.mock('../../../utils', () => {
-  const actualModule: typeof import('../../../utils') =
-    jest.requireActual('../../../utils');
-
-  return actualModule;
-});
-
 jest.mock('../shared', () => {
   const actualModule: typeof import('../shared') =
     jest.requireActual('../shared');
@@ -15,14 +8,11 @@ jest.mock('../shared', () => {
   };
 });
 
+import { TestUtil } from '@devantage/n8n-custom-nodes-framework';
+
 import type { Folder } from '../models';
 import * as folderSharedModule from '../shared';
 import { CreateOperation } from './create.operation';
-
-type OperationContext = {
-  getNode(): { name: string; type: string };
-  getNodeParameter: jest.Mock<unknown, [string, number]>;
-};
 
 describe('CreateOperation', (): void => {
   it('creates a folder with the configured additional fields', async (): Promise<void> => {
@@ -30,26 +20,21 @@ describe('CreateOperation', (): void => {
       id: 'folder-id',
       name: 'Invoices',
     };
-    const context: OperationContext = {
-      getNode: (): { name: string; type: string } => ({
-        name: 'Microsoft SharePoint',
-        type: 'microsoftSharePoint',
-      }),
-      getNodeParameter: jest
-        .fn<unknown, [string, number]>()
-        .mockReturnValueOnce('site-id')
-        .mockReturnValueOnce({
+    const context: ReturnType<typeof TestUtil.createExecuteFunctionsMock> =
+      TestUtil.createExecuteFunctionsMock({
+        siteId: 'site-id',
+        path: '/Finance/Invoices',
+        additionalFields: {
           createIntermediateFolders: true,
           overwrite: true,
-        })
-        .mockReturnValueOnce('/Finance/Invoices'),
-    };
+        },
+      });
 
     jest
       .spyOn(folderSharedModule, 'createFolder')
       .mockResolvedValueOnce(folder);
 
-    const operation: CreateOperation = new CreateOperation();
+    const operation: CreateOperation = new CreateOperation('folder');
     const result: Awaited<ReturnType<CreateOperation['execute']>> =
       await operation.execute.call(context as never, 4);
 

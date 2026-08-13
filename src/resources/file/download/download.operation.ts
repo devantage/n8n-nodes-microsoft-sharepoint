@@ -1,5 +1,5 @@
+import { ResourceOperation } from '@devantage/n8n-custom-nodes-framework';
 import {
-  IAllExecuteFunctions,
   IBinaryData,
   type IExecuteFunctions,
   type INodeExecutionData,
@@ -7,8 +7,7 @@ import {
   NodeOperationError,
 } from 'n8n-workflow';
 
-import { sendRequest, SendRequestOptions } from '../../../utils';
-import { ResourceOperation } from '../../models';
+import { httpClient, withOperationDisplayOptions } from '../../../utils';
 import { getItemIdByPath } from '../../shared';
 import { GetFileResponse } from '../models';
 
@@ -19,26 +18,30 @@ export class DownloadOperation extends ResourceOperation {
 
   public readonly description: string = 'Download a file';
 
-  public readonly properties: INodeProperties[] = [
-    {
-      name: 'siteId',
-      displayName: 'Site or ID',
-      description: 'The ID of the site',
-      required: true,
-      type: 'options',
-      typeOptions: {
-        loadOptionsMethod: 'getSiteOptions',
+  public readonly properties: INodeProperties[] = withOperationDisplayOptions(
+    this.resource,
+    this.name,
+    [
+      {
+        name: 'siteId',
+        displayName: 'Site or ID',
+        description: 'The ID of the site',
+        required: true,
+        type: 'options',
+        typeOptions: {
+          loadOptionsMethod: 'getSiteOptions',
+        },
+        default: '',
       },
-      default: '',
-    },
-    {
-      name: 'path',
-      displayName: 'File Path',
-      type: 'string',
-      required: true,
-      default: '',
-    },
-  ];
+      {
+        name: 'path',
+        displayName: 'File Path',
+        type: 'string',
+        required: true,
+        default: '',
+      },
+    ],
+  );
 
   public async execute(
     this: IExecuteFunctions,
@@ -62,23 +65,20 @@ export class DownloadOperation extends ResourceOperation {
       );
     }
 
-    const fileDetails: GetFileResponse = await sendRequest.call<
-      IAllExecuteFunctions,
-      [string, SendRequestOptions],
-      Promise<GetFileResponse>
-    >(this, `/sites/${siteId}/drive/items/${fileId}`, {
-      method: 'GET',
-    });
+    const fileDetails: GetFileResponse = await httpClient.get<GetFileResponse>(
+      this,
+      `sites/${siteId}/drive/items/${fileId}`,
+    );
 
-    const downloadedFile: Buffer = await sendRequest.call<
-      IAllExecuteFunctions,
-      [string, SendRequestOptions],
-      Promise<Buffer>
-    >(this, '', {
-      url: fileDetails['@microsoft.graph.downloadUrl'],
-      headers: {},
-      encoding: 'stream',
-    });
+    const downloadedFile: Buffer = await httpClient.get<Buffer>(
+      this,
+      fileDetails['@microsoft.graph.downloadUrl'],
+      undefined,
+      {
+        headers: {},
+        encoding: 'stream',
+      },
+    );
 
     const binaryData: IBinaryData = await this.helpers.prepareBinaryData(
       downloadedFile,

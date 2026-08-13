@@ -1,32 +1,17 @@
-import type { INode } from 'n8n-workflow';
+import {
+  ExecuteFunctionsMock,
+  TestUtil,
+} from '@devantage/n8n-custom-nodes-framework';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { Resources } from '../resources';
+import { resourceRegistry } from '../resources';
 import { MicrosoftSharePoint } from './MicrosoftSharePoint.node';
 
-type ExecuteContextMock = {
-  continueOnFail: jest.Mock<boolean, []>;
-  getInputData: jest.Mock<Array<Record<string, unknown>>, []>;
-  getNode: jest.Mock<INode, []>;
-  getNodeParameter: jest.Mock<string | undefined, [string, number]>;
-};
-
-function createExecuteContext(): ExecuteContextMock {
-  return {
-    continueOnFail: jest.fn<boolean, []>().mockReturnValue(false),
-    getInputData: jest
-      .fn<Array<Record<string, unknown>>, []>()
-      .mockReturnValue([{ json: { input: 1 } }]),
-    getNode: jest.fn<INode, []>().mockReturnValue({
-      id: '1',
-      name: 'Microsoft SharePoint',
-      parameters: {},
-      position: [0, 0],
-      type: 'microsoftSharePoint',
-      typeVersion: 1,
-    }),
-    getNodeParameter: jest.fn<string | undefined, [string, number]>(),
-  };
+function mockOperation(execute: jest.Mock<Promise<unknown>, [number]>): void {
+  jest.spyOn(resourceRegistry, 'getResource').mockReturnValue({
+    getOperation: jest.fn().mockReturnValue({ execute }),
+  } as never);
 }
 
 describe('MicrosoftSharePoint node', (): void => {
@@ -34,94 +19,99 @@ describe('MicrosoftSharePoint node', (): void => {
     jest.restoreAllMocks();
   });
 
+  it('describes the node with the registry properties and the credential', (): void => {
+    const node: MicrosoftSharePoint = new MicrosoftSharePoint();
+
+    expect(node.description.name).toBe('microsoftSharePoint');
+    expect(node.description.credentials).toEqual([
+      {
+        name: 'microsoftSharePointOAuth2Api',
+        required: true,
+      },
+    ]);
+    expect(node.description.properties[0].name).toBe('resource');
+    expect(node.description.properties[0].options).toEqual([
+      { name: 'Site', value: 'site' },
+      { name: 'Folder', value: 'folder' },
+      { name: 'File', value: 'file' },
+    ]);
+  });
+
+  it('exposes the site load options method', (): void => {
+    const node: MicrosoftSharePoint = new MicrosoftSharePoint();
+
+    expect(node.methods?.loadOptions?.getSiteOptions).toBeInstanceOf(Function);
+  });
+
   it('executes the selected resource operation for every item', async (): Promise<void> => {
-    const context: ExecuteContextMock = createExecuteContext();
-    const executeMock: jest.Mock<
-      Promise<{ json: { ok: boolean } }>,
-      [number]
-    > = jest
-      .fn<Promise<{ json: { ok: boolean } }>, [number]>()
-      .mockResolvedValue({
-        json: {
-          ok: true,
-        },
-      });
+    const context: ExecuteFunctionsMock = TestUtil.createExecuteFunctionsMock({
+      resource: 'site',
+      operation: 'list',
+    });
+    const executeMock: jest.Mock<Promise<unknown>, [number]> = jest
+      .fn<Promise<unknown>, [number]>()
+      .mockResolvedValue({ json: { ok: true } });
 
-    context.getInputData.mockReturnValue([{ json: { input: 1 } }]);
-    context.getNodeParameter
-      .mockReturnValueOnce('site')
-      .mockReturnValueOnce('list');
-
-    jest.spyOn(Resources, 'getResource').mockReturnValue({
-      getOperation: jest.fn().mockReturnValue({
-        execute: executeMock,
-      }),
-    } as never);
+    mockOperation(executeMock);
 
     const node: MicrosoftSharePoint = new MicrosoftSharePoint();
-    const result: Awaited<ReturnType<MicrosoftSharePoint['execute']>> =
-      await node.execute.call(context as never);
+    const result: INodeExecutionData[][] = await TestUtil.executeNode(
+      node,
+      context as unknown as IExecuteFunctions,
+    );
 
-    expect(result).toEqual([
-      [
-        {
-          json: {
-            ok: true,
-          },
-        },
-      ],
-    ]);
+    expect(result).toEqual([[{ json: { ok: true } }]]);
     expect(executeMock).toHaveBeenCalledWith(0);
   });
 
   it('throws when the resource is missing', async (): Promise<void> => {
-    const context: ExecuteContextMock = createExecuteContext();
-
-    context.getNodeParameter.mockReturnValueOnce(undefined);
+    const context: ExecuteFunctionsMock = TestUtil.createExecuteFunctionsMock({
+      operation: 'list',
+    });
 
     const node: MicrosoftSharePoint = new MicrosoftSharePoint();
 
-    await expect(node.execute.call(context as never)).rejects.toThrow(
-      NodeOperationError,
-    );
+    await expect(
+      TestUtil.executeNode(node, context as unknown as IExecuteFunctions),
+    ).rejects.toThrow(NodeOperationError);
   });
 
   it('throws when the operation is missing', async (): Promise<void> => {
-    const context: ExecuteContextMock = createExecuteContext();
-
-    context.getNodeParameter
-      .mockReturnValueOnce('site')
-      .mockReturnValueOnce(undefined);
+    const context: ExecuteFunctionsMock = TestUtil.createExecuteFunctionsMock({
+      resource: 'site',
+    });
 
     const node: MicrosoftSharePoint = new MicrosoftSharePoint();
 
-    await expect(node.execute.call(context as never)).rejects.toThrow(
-      NodeOperationError,
-    );
+    await expect(
+      TestUtil.executeNode(node, context as unknown as IExecuteFunctions),
+    ).rejects.toThrow(NodeOperationError);
   });
 
-  it('wraps generic errors with getErrorMessage', async (): Promise<void> => {
-    const context: ExecuteContextMock = createExecuteContext();
+  it('wraps generic errors into node operation errors', async (): Promise<void> => {
+    const context: ExecuteFunctionsMock = TestUtil.createExecuteFunctionsMock({
+      resource: 'site',
+      operation: 'list',
+    });
 
-    context.getNodeParameter
-      .mockReturnValueOnce('site')
-      .mockReturnValueOnce('list');
-
-    jest.spyOn(Resources, 'getResource').mockReturnValue({
-      getOperation: jest.fn().mockReturnValue({
-        execute: jest.fn().mockRejectedValue({ detail: 'plain failure' }),
-      }),
-    } as never);
+    mockOperation(
+      jest
+        .fn<Promise<unknown>, [number]>()
+        .mockRejectedValue({ detail: 'plain failure' }),
+    );
 
     const node: MicrosoftSharePoint = new MicrosoftSharePoint();
 
-    await expect(node.execute.call(context as never)).rejects.toThrow(
-      '{"detail":"plain failure"}',
-    );
+    await expect(
+      TestUtil.executeNode(node, context as unknown as IExecuteFunctions),
+    ).rejects.toThrow('{"detail":"plain failure"}');
   });
 
   it('returns item errors instead of throwing when continueOnFail is enabled', async (): Promise<void> => {
-    const context: ExecuteContextMock = createExecuteContext();
+    const context: ExecuteFunctionsMock = TestUtil.createExecuteFunctionsMock({
+      resource: 'site',
+      operation: 'list',
+    });
     const operationError: NodeOperationError = new NodeOperationError(
       context.getNode(),
       'operation failed',
@@ -129,19 +119,16 @@ describe('MicrosoftSharePoint node', (): void => {
     );
 
     context.continueOnFail.mockReturnValue(true);
-    context.getNodeParameter
-      .mockReturnValueOnce('site')
-      .mockReturnValueOnce('list');
 
-    jest.spyOn(Resources, 'getResource').mockReturnValue({
-      getOperation: jest.fn().mockReturnValue({
-        execute: jest.fn().mockRejectedValue(operationError),
-      }),
-    } as never);
+    mockOperation(
+      jest.fn<Promise<unknown>, [number]>().mockRejectedValue(operationError),
+    );
 
     const node: MicrosoftSharePoint = new MicrosoftSharePoint();
-    const result: Awaited<ReturnType<MicrosoftSharePoint['execute']>> =
-      await node.execute.call(context as never);
+    const result: INodeExecutionData[][] = await TestUtil.executeNode(
+      node,
+      context as unknown as IExecuteFunctions,
+    );
 
     expect(result).toEqual([
       [

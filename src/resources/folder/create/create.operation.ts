@@ -1,3 +1,4 @@
+import { ResourceOperation } from '@devantage/n8n-custom-nodes-framework';
 import type {
   IAllExecuteFunctions,
   IDataObject,
@@ -6,7 +7,7 @@ import type {
   INodeProperties,
 } from 'n8n-workflow';
 
-import { ResourceOperation } from '../../models';
+import { withOperationDisplayOptions } from '../../../utils';
 import { Folder } from '../models';
 import { createFolder } from '../shared';
 
@@ -17,47 +18,51 @@ export class CreateOperation extends ResourceOperation {
 
   public readonly description: string = 'Create a folder';
 
-  public readonly properties: INodeProperties[] = [
-    {
-      name: 'siteId',
-      displayName: 'Site or ID',
-      description: 'The ID of the site',
-      required: true,
-      type: 'options',
-      typeOptions: {
-        loadOptionsMethod: 'getSiteOptions',
+  public readonly properties: INodeProperties[] = withOperationDisplayOptions(
+    this.resource,
+    this.name,
+    [
+      {
+        name: 'siteId',
+        displayName: 'Site or ID',
+        description: 'The ID of the site',
+        required: true,
+        type: 'options',
+        typeOptions: {
+          loadOptionsMethod: 'getSiteOptions',
+        },
+        default: '',
       },
-      default: '',
-    },
-    {
-      name: 'path',
-      displayName: 'Folder Path',
-      type: 'string',
-      required: true,
-      default: '/',
-    },
-    {
-      name: 'additionalFields',
-      displayName: 'Additional Fields',
-      type: 'collection',
-      required: false,
-      options: [
-        {
-          name: 'createIntermediateFolders',
-          displayName: 'Create Intermediate Folders',
-          type: 'boolean',
-          default: false,
-        },
-        {
-          name: 'overwrite',
-          displayName: 'Overwrite',
-          type: 'boolean',
-          default: false,
-        },
-      ],
-      default: {},
-    },
-  ];
+      {
+        name: 'path',
+        displayName: 'Folder Path',
+        type: 'string',
+        required: true,
+        default: '/',
+      },
+      {
+        name: 'additionalFields',
+        displayName: 'Additional Fields',
+        type: 'collection',
+        required: false,
+        options: [
+          {
+            name: 'createIntermediateFolders',
+            displayName: 'Create Intermediate Folders',
+            type: 'boolean',
+            default: false,
+          },
+          {
+            name: 'overwrite',
+            displayName: 'Overwrite',
+            type: 'boolean',
+            default: false,
+          },
+        ],
+        default: {},
+      },
+    ],
+  );
 
   public async execute(
     this: IExecuteFunctions,
