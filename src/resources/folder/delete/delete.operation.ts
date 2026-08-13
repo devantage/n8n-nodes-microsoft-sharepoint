@@ -1,13 +1,12 @@
+import { ResourceOperation } from '@devantage/n8n-custom-nodes-framework';
 import {
-  IAllExecuteFunctions,
   type IExecuteFunctions,
   type INodeExecutionData,
   type INodeProperties,
   NodeOperationError,
 } from 'n8n-workflow';
 
-import { sendRequest, SendRequestOptions } from '../../../utils';
-import { ResourceOperation } from '../../models';
+import { httpClient, withOperationDisplayOptions } from '../../../utils';
 import { getItemIdByPath } from '../../shared';
 
 export class DeleteOperation extends ResourceOperation {
@@ -17,26 +16,30 @@ export class DeleteOperation extends ResourceOperation {
 
   public readonly description: string = 'Delete a folder';
 
-  public readonly properties: INodeProperties[] = [
-    {
-      name: 'siteId',
-      displayName: 'Site or ID',
-      description: 'The ID of the site',
-      required: true,
-      type: 'options',
-      typeOptions: {
-        loadOptionsMethod: 'getSiteOptions',
+  public readonly properties: INodeProperties[] = withOperationDisplayOptions(
+    this.resource,
+    this.name,
+    [
+      {
+        name: 'siteId',
+        displayName: 'Site or ID',
+        description: 'The ID of the site',
+        required: true,
+        type: 'options',
+        typeOptions: {
+          loadOptionsMethod: 'getSiteOptions',
+        },
+        default: '',
       },
-      default: '',
-    },
-    {
-      name: 'path',
-      displayName: 'Folder Path',
-      type: 'string',
-      required: true,
-      default: '',
-    },
-  ];
+      {
+        name: 'path',
+        displayName: 'Folder Path',
+        type: 'string',
+        required: true,
+        default: '',
+      },
+    ],
+  );
 
   public async execute(
     this: IExecuteFunctions,
@@ -60,13 +63,10 @@ export class DeleteOperation extends ResourceOperation {
       );
     }
 
-    await sendRequest.call<
-      IAllExecuteFunctions,
-      [string, SendRequestOptions],
-      Promise<void>
-    >(this, `/sites/${siteId}/drive/items/${folderId}`, {
-      method: 'DELETE',
-    });
+    await httpClient.delete<unknown>(
+      this,
+      `sites/${siteId}/drive/items/${folderId}`,
+    );
 
     return {
       json: { deleted: true },

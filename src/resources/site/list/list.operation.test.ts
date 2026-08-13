@@ -30,7 +30,7 @@ describe('ListOperation', (): void => {
       .spyOn(siteSharedModule, 'listSites')
       .mockResolvedValueOnce(sitesResponse);
 
-    const operation: ListOperation = new ListOperation();
+    const operation: ListOperation = new ListOperation('site');
     const result: INodeExecutionData = await operation.execute.call(
       {} as never,
       2,

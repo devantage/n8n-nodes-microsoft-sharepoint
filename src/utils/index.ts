@@ -1,3 +1,3 @@
-export * from './get-error-message.function';
+export * from './http-client';
 export * from './normalize-path.function';
-export * from './send-request.function';
+export * from './with-operation-display-options.function';

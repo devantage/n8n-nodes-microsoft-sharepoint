@@ -1,5 +1,5 @@
+import { ResourceOperation } from '@devantage/n8n-custom-nodes-framework';
 import {
-  IAllExecuteFunctions,
   IDataObject,
   type IExecuteFunctions,
   type INodeExecutionData,
@@ -7,8 +7,7 @@ import {
   NodeOperationError,
 } from 'n8n-workflow';
 
-import { sendRequest, SendRequestOptions } from '../../../utils';
-import { ResourceOperation } from '../../models';
+import { httpClient, withOperationDisplayOptions } from '../../../utils';
 import { getItemIdByPath } from '../../shared';
 
 export class UploadOperation extends ResourceOperation {
@@ -18,40 +17,44 @@ export class UploadOperation extends ResourceOperation {
 
   public readonly description: string = 'Upload a file';
 
-  public readonly properties: INodeProperties[] = [
-    {
-      name: 'siteId',
-      displayName: 'Site or ID',
-      description: 'The ID of the site',
-      required: true,
-      type: 'options',
-      typeOptions: {
-        loadOptionsMethod: 'getSiteOptions',
+  public readonly properties: INodeProperties[] = withOperationDisplayOptions(
+    this.resource,
+    this.name,
+    [
+      {
+        name: 'siteId',
+        displayName: 'Site or ID',
+        description: 'The ID of the site',
+        required: true,
+        type: 'options',
+        typeOptions: {
+          loadOptionsMethod: 'getSiteOptions',
+        },
+        default: '',
       },
-      default: '',
-    },
-    {
-      name: 'path',
-      displayName: 'File Path',
-      type: 'string',
-      required: true,
-      default: '',
-    },
-    {
-      name: 'name',
-      displayName: 'File Name',
-      type: 'string',
-      required: true,
-      default: '',
-    },
-    {
-      name: 'binaryPropertyName',
-      displayName: 'File Binary Data Property Name',
-      type: 'string',
-      required: true,
-      default: 'file',
-    },
-  ];
+      {
+        name: 'path',
+        displayName: 'File Path',
+        type: 'string',
+        required: true,
+        default: '',
+      },
+      {
+        name: 'name',
+        displayName: 'File Name',
+        type: 'string',
+        required: true,
+        default: '',
+      },
+      {
+        name: 'binaryPropertyName',
+        displayName: 'File Binary Data Property Name',
+        type: 'string',
+        required: true,
+        default: 'file',
+      },
+    ],
+  );
 
   public async execute(
     this: IExecuteFunctions,
@@ -87,14 +90,12 @@ export class UploadOperation extends ResourceOperation {
       );
     }
 
-    const file: IDataObject = await sendRequest.call<
-      IAllExecuteFunctions,
-      [string, SendRequestOptions],
-      Promise<IDataObject>
-    >(this, `/sites/${siteId}/drive/items/${parentId}:/${name}:/content`, {
-      method: 'PUT',
-      body: fileBuffer,
-    });
+    const file: IDataObject = await httpClient.put<IDataObject>(
+      this,
+      `sites/${siteId}/drive/items/${parentId}:/${name}:/content`,
+      undefined,
+      fileBuffer as unknown as IDataObject,
+    );
 
     return {
       json: file,

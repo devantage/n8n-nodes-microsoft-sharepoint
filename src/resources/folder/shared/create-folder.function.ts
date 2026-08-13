@@ -4,7 +4,7 @@ import {
   NodeOperationError,
 } from 'n8n-workflow';
 
-import { normalizePath, sendRequest, SendRequestOptions } from '../../../utils';
+import { httpClient, normalizePath } from '../../../utils';
 import { getItemIdByPath } from '../../shared';
 import { Folder } from '../models';
 
@@ -25,14 +25,7 @@ async function sendCreateFolderRequest(
     '@microsoft.graph.conflictBehavior': overwrite ? 'replace' : 'fail',
   };
 
-  return sendRequest.call<
-    IAllExecuteFunctions,
-    [string, SendRequestOptions],
-    Promise<Folder>
-  >(this, resource, {
-    method: 'POST',
-    body,
-  });
+  return httpClient.post<Folder>(this, resource, body);
 }
 
 async function createParentFolders(

@@ -1,13 +1,3 @@
-jest.mock('../../../utils', () => {
-  const actualModule: typeof import('../../../utils') =
-    jest.requireActual('../../../utils');
-
-  return {
-    ...actualModule,
-    sendRequest: jest.fn(),
-  };
-});
-
 jest.mock('../../shared', () => {
   const actualModule: typeof import('../../shared') =
     jest.requireActual('../../shared');
@@ -18,55 +8,48 @@ jest.mock('../../shared', () => {
   };
 });
 
+import { TestUtil } from '@devantage/n8n-custom-nodes-framework';
 import { NodeOperationError } from 'n8n-workflow';
 
-import * as utilsModule from '../../../utils';
+import { httpClient } from '../../../utils';
 import * as sharedModule from '../../shared';
 import { UploadOperation } from './upload.operation';
 
-type FileExecutionContextMock = {
-  getNode(): { name: string; type: string };
-  getNodeParameter: jest.Mock<unknown, [string, number]>;
-  helpers: {
-    getBinaryDataBuffer: jest.Mock<Promise<Buffer>, [number, string]>;
-  };
-};
+type UploadContext = ReturnType<typeof TestUtil.createExecuteFunctionsMock>;
 
-function createContext(): FileExecutionContextMock {
-  return {
-    getNode: (): { name: string; type: string } => ({
-      name: 'Microsoft SharePoint',
-      type: 'microsoftSharePoint',
-    }),
-    getNodeParameter: jest.fn<unknown, [string, number]>(),
-    helpers: {
-      getBinaryDataBuffer: jest.fn<Promise<Buffer>, [number, string]>(),
+function createContext(): UploadContext {
+  return TestUtil.createExecuteFunctionsMock(
+    {
+      siteId: 'site-id',
+      path: '/Documents',
+      name: 'report.pdf',
+      binaryPropertyName: 'file',
     },
-  };
+    {
+      helpers: {
+        getBinaryDataBuffer: jest
+          .fn()
+          .mockResolvedValue(Buffer.from('file-content')),
+      } as never,
+    },
+  );
 }
 
 describe('UploadOperation', (): void => {
   it('uploads a binary file into an existing folder', async (): Promise<void> => {
-    const context: FileExecutionContextMock = createContext();
-
-    context.getNodeParameter
-      .mockReturnValueOnce('site-id')
-      .mockReturnValueOnce('/Documents')
-      .mockReturnValueOnce('report.pdf')
-      .mockReturnValueOnce('file');
-    context.helpers.getBinaryDataBuffer.mockResolvedValueOnce(
-      Buffer.from('file-content'),
-    );
+    const context: UploadContext = createContext();
 
     jest
       .spyOn(sharedModule, 'getItemIdByPath')
       .mockResolvedValueOnce('folder-id');
-    jest.spyOn(utilsModule, 'sendRequest').mockResolvedValueOnce({
-      id: 'file-id',
-      name: 'report.pdf',
-    });
+    const putSpy: jest.SpyInstance = jest
+      .spyOn(httpClient, 'put')
+      .mockResolvedValueOnce({
+        id: 'file-id',
+        name: 'report.pdf',
+      });
 
-    const operation: UploadOperation = new UploadOperation();
+    const operation: UploadOperation = new UploadOperation('file');
     const result: Awaited<ReturnType<UploadOperation['execute']>> =
       await operation.execute.call(context as never, 0);
 
@@ -77,32 +60,22 @@ describe('UploadOperation', (): void => {
       },
       pairedItem: 0,
     });
-    expect(utilsModule.sendRequest).toHaveBeenCalledWith(
-      '/sites/site-id/drive/items/folder-id:/report.pdf:/content',
-      {
-        body: Buffer.from('file-content'),
-        method: 'PUT',
-      },
+    expect(putSpy).toHaveBeenCalledWith(
+      context,
+      'sites/site-id/drive/items/folder-id:/report.pdf:/content',
+      undefined,
+      Buffer.from('file-content'),
     );
   });
 
   it('throws when uploading to a missing folder', async (): Promise<void> => {
-    const context: FileExecutionContextMock = createContext();
-
-    context.getNodeParameter
-      .mockReturnValueOnce('site-id')
-      .mockReturnValueOnce('/Documents')
-      .mockReturnValueOnce('report.pdf')
-      .mockReturnValueOnce('file');
-    context.helpers.getBinaryDataBuffer.mockResolvedValueOnce(
-      Buffer.from('file-content'),
-    );
+    const context: UploadContext = createContext();
 
     jest
       .spyOn(sharedModule, 'getItemIdByPath')
       .mockResolvedValueOnce(undefined);
 
-    const operation: UploadOperation = new UploadOperation();
+    const operation: UploadOperation = new UploadOperation('file');
 
     await expect(operation.execute.call(context as never, 0)).rejects.toThrow(
       NodeOperationError,

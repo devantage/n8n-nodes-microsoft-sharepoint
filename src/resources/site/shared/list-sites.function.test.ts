@@ -1,14 +1,4 @@
-jest.mock('../../../utils', () => {
-  const actualModule: typeof import('../../../utils') =
-    jest.requireActual('../../../utils');
-
-  return {
-    ...actualModule,
-    sendRequest: jest.fn(),
-  };
-});
-
-import * as utilsModule from '../../../utils';
+import { httpClient } from '../../../utils';
 import type { ListSitesResponse } from '../models';
 import { listSites } from './list-sites.function';
 
@@ -24,16 +14,15 @@ describe('listSites', (): void => {
       ],
     };
 
-    jest.spyOn(utilsModule, 'sendRequest').mockResolvedValueOnce(sitesResponse);
+    const getSpy: jest.SpyInstance = jest
+      .spyOn(httpClient, 'get')
+      .mockResolvedValueOnce(sitesResponse);
 
     await expect(listSites.call({} as never)).resolves.toEqual(sitesResponse);
 
-    expect(utilsModule.sendRequest).toHaveBeenCalledWith('sites', {
-      method: 'GET',
-      qs: {
-        $select: 'id,name,displayName',
-        search: '*',
-      },
+    expect(getSpy).toHaveBeenCalledWith({}, 'sites', {
+      $select: 'id,name,displayName',
+      search: '*',
     });
   });
 });

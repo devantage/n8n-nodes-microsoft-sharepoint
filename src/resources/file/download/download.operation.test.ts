@@ -1,13 +1,3 @@
-jest.mock('../../../utils', () => {
-  const actualModule: typeof import('../../../utils') =
-    jest.requireActual('../../../utils');
-
-  return {
-    ...actualModule,
-    sendRequest: jest.fn(),
-  };
-});
-
 jest.mock('../../shared', () => {
   const actualModule: typeof import('../../shared') =
     jest.requireActual('../../shared');
@@ -18,48 +8,38 @@ jest.mock('../../shared', () => {
   };
 });
 
+import { TestUtil } from '@devantage/n8n-custom-nodes-framework';
+import type { IBinaryData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import * as utilsModule from '../../../utils';
+import { httpClient } from '../../../utils';
 import * as sharedModule from '../../shared';
 import type { GetFileResponse } from '../models';
 import { DownloadOperation } from './download.operation';
 
-type BinaryData = {
-  fileName: string;
-  mimeType: string;
-};
+type DownloadContext = ReturnType<typeof TestUtil.createExecuteFunctionsMock>;
 
-type FileExecutionContextMock = {
-  getNode(): { name: string; type: string };
-  getNodeParameter: jest.Mock<unknown, [string, number]>;
-  helpers: {
-    prepareBinaryData: jest.Mock<
-      Promise<BinaryData>,
-      [Buffer, string, string | undefined]
-    >;
-  };
-};
-
-function createContext(): FileExecutionContextMock {
-  return {
-    getNode: (): { name: string; type: string } => ({
-      name: 'Microsoft SharePoint',
-      type: 'microsoftSharePoint',
-    }),
-    getNodeParameter: jest.fn<unknown, [string, number]>(),
-    helpers: {
-      prepareBinaryData: jest.fn<
-        Promise<BinaryData>,
-        [Buffer, string, string | undefined]
-      >(),
+function createContext(): DownloadContext {
+  return TestUtil.createExecuteFunctionsMock(
+    {
+      siteId: 'site-id',
+      path: '/Documents/report.pdf',
     },
-  };
+    {
+      helpers: {
+        prepareBinaryData: jest.fn(),
+      } as never,
+    },
+  );
 }
 
 describe('DownloadOperation', (): void => {
   it('downloads a file and exposes it as binary data', async (): Promise<void> => {
-    const context: FileExecutionContextMock = createContext();
+    const context: DownloadContext = createContext();
+    const binaryData: IBinaryData = TestUtil.createBinaryData({
+      fileName: 'report.pdf',
+      mimeType: 'application/pdf',
+    });
     const fileDetails: GetFileResponse = {
       '@microsoft.graph.downloadUrl': 'https://download.example.com/report.pdf',
       file: {
@@ -69,61 +49,55 @@ describe('DownloadOperation', (): void => {
       name: 'report.pdf',
     };
 
-    context.getNodeParameter
-      .mockReturnValueOnce('site-id')
-      .mockReturnValueOnce('/Documents/report.pdf');
-    context.helpers.prepareBinaryData.mockResolvedValueOnce({
-      fileName: 'report.pdf',
-      mimeType: 'application/pdf',
-    });
+    (
+      context.helpers as unknown as {
+        prepareBinaryData: jest.Mock;
+      }
+    ).prepareBinaryData.mockResolvedValueOnce(binaryData);
 
     jest
       .spyOn(sharedModule, 'getItemIdByPath')
       .mockResolvedValueOnce('file-id');
-    jest
-      .spyOn(utilsModule, 'sendRequest')
+    const getSpy: jest.SpyInstance = jest
+      .spyOn(httpClient, 'get')
       .mockResolvedValueOnce(fileDetails)
       .mockResolvedValueOnce(Buffer.from('file-content'));
 
-    const operation: DownloadOperation = new DownloadOperation();
+    const operation: DownloadOperation = new DownloadOperation('file');
     const result: Awaited<ReturnType<DownloadOperation['execute']>> =
       await operation.execute.call(context as never, 5);
 
     expect(result).toEqual({
       binary: {
-        file: {
-          fileName: 'report.pdf',
-          mimeType: 'application/pdf',
-        },
+        file: binaryData,
       },
       json: fileDetails,
     });
-    expect(utilsModule.sendRequest).toHaveBeenNthCalledWith(
+    expect(getSpy).toHaveBeenNthCalledWith(
       1,
-      '/sites/site-id/drive/items/file-id',
+      context,
+      'sites/site-id/drive/items/file-id',
+    );
+    expect(getSpy).toHaveBeenNthCalledWith(
+      2,
+      context,
+      'https://download.example.com/report.pdf',
+      undefined,
       {
-        method: 'GET',
+        encoding: 'stream',
+        headers: {},
       },
     );
-    expect(utilsModule.sendRequest).toHaveBeenNthCalledWith(2, '', {
-      encoding: 'stream',
-      headers: {},
-      url: 'https://download.example.com/report.pdf',
-    });
   });
 
   it('throws when downloading a missing file', async (): Promise<void> => {
-    const context: FileExecutionContextMock = createContext();
-
-    context.getNodeParameter
-      .mockReturnValueOnce('site-id')
-      .mockReturnValueOnce('/Documents/report.pdf');
+    const context: DownloadContext = createContext();
 
     jest
       .spyOn(sharedModule, 'getItemIdByPath')
       .mockResolvedValueOnce(undefined);
 
-    const operation: DownloadOperation = new DownloadOperation();
+    const operation: DownloadOperation = new DownloadOperation('file');
 
     await expect(operation.execute.call(context as never, 2)).rejects.toThrow(
       NodeOperationError,
