@@ -28,9 +28,9 @@ function createContext(): UploadContext {
     {
       helpers: {
         getBinaryDataBuffer: jest
-          .fn()
+          .fn<Promise<Buffer>, [number, string]>()
           .mockResolvedValue(Buffer.from('file-content')),
-      } as never,
+      },
     },
   );
 }
